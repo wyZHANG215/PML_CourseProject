@@ -1,0 +1,74 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Weiying"
+date: "8/25/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Introduction and Summary
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+Class A corresponds to the specified execution of the exercise, while the other 4 classes correspond to common mistakes.
+
+## Data, EDA and Clean
+Load the csv training and testing data respective. By looking at the data, decided to get rid of the identity, user name, time stamp and windows columns. Further, since we have no logic on how to compensate the data with NAs, simply exclude them at the moment, after we did the modeling, we can decide if we need them or not.
+```{r load-packages, include=FALSE}
+library(caret)
+library(randomForest)
+library(e1071)
+```
+```{r data_EDA, echo=TRUE}
+# training data
+PML_training <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"),
+                         na.strings=c("NA","#DIV/0!",""))
+PML_testing <- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"),
+                        na.strings=c("NA","#DIV/0!",""))
+
+# by looking at the data, get rid of timestamp data, identity related columns for this modeling
+PML_training <- PML_training[,8:length(PML_training)]
+PML_testing <- PML_testing[,8:length(PML_testing)]
+
+# exclude columns with NAs
+PML_training <- PML_training[, colSums(is.na(PML_training)) == 0]
+PML_testing <- PML_testing[, colSums(is.na(PML_testing)) == 0]
+
+table(PML_training$classe)
+```
+
+## Prepare Data for Training
+Separate the training data into a training set (70% of training data) and a validation set (30% of training data).
+```{r prepare_training_data, echo=TRUE, results="hide"}
+set.seed(1234)
+trainset <- createDataPartition(PML_training$classe, p = 0.7, list = FALSE)
+Training <- PML_training[trainset, ]
+Validation <- PML_training[-trainset, ]
+```
+
+## Build a Random Forest Model
+Using a random forest model with the training data to predict the classe.
+```{r rf_model, echo=TRUE}
+# training with random forest model
+rfModel <- randomForest(classe ~., data=Training, type="class")
+
+rfModel
+```
+Use the seperated validation data to validate the model.
+```{r validate, echo=TRUE}
+# validate the model with the validation data
+validate <- predict(rfModel, newdata = Validation, type="class")
+confusionMatrix(validate, Validation$classe)
+```
+The model has an accuray of 0.9936.
+
+# Prediction exercise
+Perform the prediction:
+```{r pred, echo=TRUE}
+pred <- predict(rfModel, newdata = PML_testing, type="class")
+```
+The final outcome show below.
+```{r outcome}
+pred
+```
